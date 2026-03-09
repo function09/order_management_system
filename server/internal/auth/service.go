@@ -22,13 +22,13 @@ func VerifyPassword(hashedPass string, inputPass string) error {
 }
 
 type Claims struct {
-	UserName string
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(username string, secret string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{UserName: username, RegisteredClaims: jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+func GenerateToken(username string, secret string, duration time.Duration) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{RegisteredClaims: jwt.RegisteredClaims{
+		Subject:   username,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}})
 
