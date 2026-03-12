@@ -77,15 +77,24 @@ func LoginUserHandler(store AuthStore, secret string) http.HandlerFunc {
 		}
 
 		token, err := GenerateToken(user.Username, secret, time.Hour)
-
 		if err != nil {
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 			return
 		}
 
+		http.SetCookie(w, &http.Cookie{
+			Name:     "token",
+			Value:    token,
+			HttpOnly: true,
+			Path:     "/",
+		})
+
 		w.WriteHeader(http.StatusOK)
-
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
-
 	}
+}
+
+func LogOutHandler(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: "token", Expires: time.Unix(0, 0)})
+	w.WriteHeader(http.StatusOK)
+
 }

@@ -92,4 +92,40 @@ func TestUserLogin(t *testing.T) {
 
 	})
 
+	t.Run("Verify cookie is set", func(t *testing.T) {
+
+		body := strings.NewReader(`{"username":"testuser", "password":"testpass"}`)
+		req := httptest.NewRequest("POST", "/auth/login", body)
+		w := httptest.NewRecorder()
+
+		handler := LoginUserHandler(&FakeStoreWithUser{}, "secret")
+
+		handler(w, req)
+
+		cookies := w.Result().Cookies()
+		found := false
+
+		for _, c := range cookies {
+			if c.Name == "token" {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			t.Error("expected token cookie to be set")
+		}
+	})
+}
+
+func TestLogOutHandler(t *testing.T) {
+	req := httptest.NewRequest("POST", "/auth/logout", nil)
+	w := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(LogOutHandler)
+	handler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("got %d want %d", w.Code, http.StatusOK)
+	}
 }

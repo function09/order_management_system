@@ -36,6 +36,7 @@ func main() {
 
 	mux.HandleFunc("POST /auth/register", auth.RegisterUserHandler(store))
 	mux.HandleFunc("POST /auth/login", auth.LoginUserHandler(store, cfg.JWTSecret))
+	mux.HandleFunc("POST /auth/logout", auth.LogOutHandler)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
