@@ -74,14 +74,14 @@ func AddProductHandler(store ProductStore) http.HandlerFunc {
 func RemoveProductHandler(store ProductStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pathValue := r.PathValue("id")
-		PathValueInt, err := strconv.Atoi(pathValue)
+		pathValueInt, err := strconv.Atoi(pathValue)
 
 		if err != nil {
 			http.Error(w, "Invalid path value", http.StatusBadRequest)
 			return
 		}
 
-		if err := store.RemoveProduct(&Product{ID: PathValueInt}); err != nil {
+		if err := store.RemoveProduct(&Product{ID: pathValueInt}); err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Product not found", http.StatusNotFound)
 				return
@@ -89,6 +89,35 @@ func RemoveProductHandler(store ProductStore) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+func UpdateProductHandler(store ProductStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var product *ProductInput
+
+		if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
+			http.Error(w, "Malformed JSON", http.StatusBadRequest)
+			return
+		}
+
+		pathValue := r.PathValue("id")
+		pathValueInt, err := strconv.Atoi(pathValue)
+
+		if err != nil {
+			http.Error(w, "Invalid path value", http.StatusBadRequest)
+			return
+		}
+
+		if err := store.UpdateProduct(&Product{ID: pathValueInt, Name: product.Name, Price: product.Price, Quantity: product.Quantity, CategoryID: product.CategoryID}); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Product not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 	}
 }

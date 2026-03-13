@@ -144,7 +144,7 @@ func TestRemoveProduct(t *testing.T) {
 		pathValue string
 		want      int
 	}{
-		{"Sucessfully remove a product", &FakeStore{RemoveProductFn: func(p *Product) error {
+		{"Successfully remove a product", &FakeStore{RemoveProductFn: func(p *Product) error {
 			return nil
 		}}, "1", 200},
 		{"Invalid ID", &FakeStore{RemoveProductFn: func(p *Product) error {
@@ -163,6 +163,49 @@ func TestRemoveProduct(t *testing.T) {
 			req.SetPathValue("id", e.pathValue)
 
 			handler := RemoveProductHandler(e.store)
+			handler(w, req)
+
+			if w.Code != e.want {
+				t.Errorf("Got %d, want %d", w.Code, e.want)
+			}
+		})
+	}
+}
+
+func TestUpdateProduct(t *testing.T) {
+	var tests = []struct {
+		name      string
+		store     ProductStore
+		pathValue string
+		body      string
+		want      int
+	}{
+		{"Successfuly adds a product", &FakeStore{UpdateProductFn: func(p *Product) error {
+			return nil
+		}}, "1", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 200},
+		{"Does not add malformed json", &FakeStore{UpdateProductFn: func(p *Product) error {
+			return nil
+		}}, "1", `{"name": "Pepsi", "price":,"quantity": 5, "category_id": 1}`, 400},
+		{"Invalid ID", &FakeStore{UpdateProductFn: func(p *Product) error {
+			return nil
+		}}, "abc", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 400},
+		{"Product not found", &FakeStore{UpdateProductFn: func(p *Product) error {
+			return sql.ErrNoRows
+		}}, "2", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 404},
+		{"DB failure", &FakeStore{UpdateProductFn: func(p *Product) error {
+			return errors.New("internal server error")
+		}}, "1", `{"name": "Pepsi", "price": 199,"quantity": 5, "category_id": 1}`, 500},
+	}
+
+	for _, e := range tests {
+		t.Run(e.name, func(t *testing.T) {
+			body := strings.NewReader(e.body)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("PUT", "/product/{id}", body)
+
+			req.SetPathValue("id", e.pathValue)
+
+			handler := UpdateProductHandler(e.store)
 			handler(w, req)
 
 			if w.Code != e.want {
