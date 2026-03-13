@@ -16,7 +16,7 @@ type ProductInput struct {
 
 func GetAllProductsHandler(store ProductStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		products, err := store.GetAllProducts()
+		products, err := store.GetAllProducts(r.Context())
 
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -38,7 +38,7 @@ func GetProductHandler(store ProductStore) http.HandlerFunc {
 			return
 		}
 
-		product, err := store.GetProduct(pathValueInt)
+		product, err := store.GetProduct(r.Context(), pathValueInt)
 
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -62,7 +62,7 @@ func AddProductHandler(store ProductStore) http.HandlerFunc {
 			return
 		}
 
-		if err := store.AddProduct(&Product{Name: product.Name, Price: product.Price, Quantity: product.Quantity, CategoryID: product.CategoryID}); err != nil {
+		if err := store.AddProduct(r.Context(), &Product{Name: product.Name, Price: product.Price, Quantity: product.Quantity, CategoryID: product.CategoryID}); err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -81,7 +81,7 @@ func RemoveProductHandler(store ProductStore) http.HandlerFunc {
 			return
 		}
 
-		if err := store.RemoveProduct(&Product{ID: pathValueInt}); err != nil {
+		if err := store.RemoveProduct(r.Context(), &Product{ID: pathValueInt}); err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Product not found", http.StatusNotFound)
 				return
@@ -109,7 +109,7 @@ func UpdateProductHandler(store ProductStore) http.HandlerFunc {
 			return
 		}
 
-		if err := store.UpdateProduct(&Product{ID: pathValueInt, Name: product.Name, Price: product.Price, Quantity: product.Quantity, CategoryID: product.CategoryID}); err != nil {
+		if err := store.UpdateProduct(r.Context(), &Product{ID: pathValueInt, Name: product.Name, Price: product.Price, Quantity: product.Quantity, CategoryID: product.CategoryID}); err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Product not found", http.StatusNotFound)
 				return

@@ -1,6 +1,7 @@
 package products
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -17,15 +18,15 @@ type Store struct {
 }
 
 type ProductStore interface {
-	GetAllProducts() ([]*Product, error)
-	GetProduct(id int) (*Product, error)
-	AddProduct(p *Product) error
-	RemoveProduct(p *Product) error
-	UpdateProduct(p *Product) error
+	GetAllProducts(ctx context.Context) ([]*Product, error)
+	GetProduct(ctx context.Context, id int) (*Product, error)
+	AddProduct(ctx context.Context, p *Product) error
+	RemoveProduct(ctx context.Context, p *Product) error
+	UpdateProduct(ctx context.Context, p *Product) error
 }
 
-func (s *Store) GetAllProducts() ([]*Product, error) {
-	rows, err := s.Query("SELECT id, name, price, quantity, category_id FROM products")
+func (s *Store) GetAllProducts(ctx context.Context) ([]*Product, error) {
+	rows, err := s.QueryContext(ctx, "SELECT id, name, price, quantity, category_id FROM products")
 	if err != nil {
 		return nil, err
 	}
@@ -45,24 +46,24 @@ func (s *Store) GetAllProducts() ([]*Product, error) {
 	return products, nil
 }
 
-func (s *Store) GetProduct(id int) (*Product, error) {
+func (s *Store) GetProduct(ctx context.Context, id int) (*Product, error) {
 	var product Product
-	if err := s.QueryRow("SELECT id, name, price, quantity, category_id FROM products WHERE id = $1", id).Scan(&product.ID, &product.Name, &product.Price, &product.Quantity, &product.CategoryID); err != nil {
+	if err := s.QueryRowContext(ctx, "SELECT id, name, price, quantity, category_id FROM products WHERE id = $1", id).Scan(&product.ID, &product.Name, &product.Price, &product.Quantity, &product.CategoryID); err != nil {
 		return nil, err
 	}
 	return &product, nil
 }
 
-func (s *Store) AddProduct(p *Product) error {
-	_, err := s.Exec("INSERT INTO products (name, price, quantity, category_id) VALUES ($1, $2, $3, $4)", p.Name, p.Price, p.Quantity, p.CategoryID)
+func (s *Store) AddProduct(ctx context.Context, p *Product) error {
+	_, err := s.ExecContext(ctx, "INSERT INTO products (name, price, quantity, category_id) VALUES ($1, $2, $3, $4)", p.Name, p.Price, p.Quantity, p.CategoryID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Store) RemoveProduct(p *Product) error {
-	_, err := s.Exec("DELETE FROM products WHERE id = $1", p.ID)
+func (s *Store) RemoveProduct(ctx context.Context, p *Product) error {
+	_, err := s.ExecContext(ctx, "DELETE FROM products WHERE id = $1", p.ID)
 
 	if err != nil {
 		return err
@@ -71,8 +72,8 @@ func (s *Store) RemoveProduct(p *Product) error {
 	return nil
 }
 
-func (s *Store) UpdateProduct(p *Product) error {
-	_, err := s.Exec("UPDATE products SET name = $1, price = $2, quantity = $3, category_id = $4 WHERE id = $5", p.Name, p.Price, p.Quantity, p.CategoryID)
+func (s *Store) UpdateProduct(ctx context.Context, p *Product) error {
+	_, err := s.ExecContext(ctx, "UPDATE products SET name = $1, price = $2, quantity = $3, category_id = $4 WHERE id = $5", p.Name, p.Price, p.Quantity, p.CategoryID, p.ID)
 
 	if err != nil {
 		return err

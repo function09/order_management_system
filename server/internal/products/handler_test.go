@@ -1,6 +1,7 @@
 package products
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http/httptest"
@@ -9,31 +10,31 @@ import (
 )
 
 type FakeStore struct {
-	GetAllProductsFn func() ([]*Product, error)
-	GetProductFn     func(id int) (*Product, error)
-	AddProductFn     func(*Product) error
-	UpdateProductFn  func(*Product) error
-	RemoveProductFn  func(*Product) error
+	GetAllProductsFn func(ctx context.Context) ([]*Product, error)
+	GetProductFn     func(ctx context.Context, id int) (*Product, error)
+	AddProductFn     func(ctx context.Context, p *Product) error
+	UpdateProductFn  func(ctx context.Context, p *Product) error
+	RemoveProductFn  func(ctx context.Context, p *Product) error
 }
 
-func (s *FakeStore) GetAllProducts() ([]*Product, error) {
-	return s.GetAllProductsFn()
+func (s *FakeStore) GetAllProducts(ctx context.Context) ([]*Product, error) {
+	return s.GetAllProductsFn(ctx)
 }
 
-func (s *FakeStore) GetProduct(id int) (*Product, error) {
-	return s.GetProductFn(id)
+func (s *FakeStore) GetProduct(ctx context.Context, id int) (*Product, error) {
+	return s.GetProductFn(ctx, id)
 }
 
-func (s *FakeStore) AddProduct(p *Product) error {
-	return s.AddProductFn(p)
+func (s *FakeStore) AddProduct(ctx context.Context, p *Product) error {
+	return s.AddProductFn(ctx, p)
 }
 
-func (s *FakeStore) UpdateProduct(p *Product) error {
-	return s.UpdateProductFn(p)
+func (s *FakeStore) UpdateProduct(ctx context.Context, p *Product) error {
+	return s.UpdateProductFn(ctx, p)
 }
 
-func (s *FakeStore) RemoveProduct(p *Product) error {
-	return s.RemoveProductFn(p)
+func (s *FakeStore) RemoveProduct(ctx context.Context, p *Product) error {
+	return s.RemoveProductFn(ctx, p)
 }
 
 func TestGetAllProducts(t *testing.T) {
@@ -42,13 +43,13 @@ func TestGetAllProducts(t *testing.T) {
 		store ProductStore
 		want  int
 	}{
-		{"Returns a list of products", &FakeStore{GetAllProductsFn: func() ([]*Product, error) {
+		{"Returns a list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context) ([]*Product, error) {
 			return []*Product{{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, {ID: 1, Name: "Coke", Price: 299, Quantity: 2, CategoryID: 1}}, nil
 		}}, 200},
-		{"Returns an empty list of products", &FakeStore{GetAllProductsFn: func() ([]*Product, error) {
+		{"Returns an empty list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context) ([]*Product, error) {
 			return []*Product{}, nil
 		}}, 200},
-		{"DB call fails", &FakeStore{GetAllProductsFn: func() ([]*Product, error) {
+		{"DB call fails", &FakeStore{GetAllProductsFn: func(ctx context.Context) ([]*Product, error) {
 			return nil, errors.New("error db call failed")
 		}}, 500},
 	}
@@ -77,10 +78,10 @@ func TestGetProduct(t *testing.T) {
 		pathValue string
 		want      int
 	}{
-		{"Returns a single product", &FakeStore{GetProductFn: func(id int) (*Product, error) {
+		{"Returns a single product", &FakeStore{GetProductFn: func(ctx context.Context, id int) (*Product, error) {
 			return &Product{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, nil
 		}}, "1", 200},
-		{"Returns no product", &FakeStore{GetProductFn: func(id int) (*Product, error) {
+		{"Returns no product", &FakeStore{GetProductFn: func(ctx context.Context, id int) (*Product, error) {
 			return nil, sql.ErrNoRows
 		}}, "2", 404},
 	}
@@ -110,13 +111,13 @@ func TestAddProduct(t *testing.T) {
 		body  string
 		want  int
 	}{
-		{"Successfuly adds a product", &FakeStore{AddProductFn: func(p *Product) error {
+		{"Successfuly adds a product", &FakeStore{AddProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 201},
-		{"Does not add malformed json", &FakeStore{AddProductFn: func(p *Product) error {
+		{"Does not add malformed json", &FakeStore{AddProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, `{"name": "Pepsi", "price":,"quantity": 5, "category_id": 1}`, 400},
-		{"DB failure", &FakeStore{AddProductFn: func(p *Product) error {
+		{"DB failure", &FakeStore{AddProductFn: func(ctx context.Context, p *Product) error {
 			return errors.New("internal server error")
 		}}, `{"name": "Pepsi", "price": 199,"quantity": 5, "category_id": 1}`, 500},
 	}
@@ -144,13 +145,13 @@ func TestRemoveProduct(t *testing.T) {
 		pathValue string
 		want      int
 	}{
-		{"Successfully remove a product", &FakeStore{RemoveProductFn: func(p *Product) error {
+		{"Successfully remove a product", &FakeStore{RemoveProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "1", 200},
-		{"Invalid ID", &FakeStore{RemoveProductFn: func(p *Product) error {
+		{"Invalid ID", &FakeStore{RemoveProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "abc", 400},
-		{"Product not found", &FakeStore{RemoveProductFn: func(p *Product) error {
+		{"Product not found", &FakeStore{RemoveProductFn: func(ctx context.Context, p *Product) error {
 			return sql.ErrNoRows
 		}}, "2", 404},
 	}
@@ -180,19 +181,19 @@ func TestUpdateProduct(t *testing.T) {
 		body      string
 		want      int
 	}{
-		{"Successfuly adds a product", &FakeStore{UpdateProductFn: func(p *Product) error {
+		{"Successfuly adds a product", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "1", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 200},
-		{"Does not add malformed json", &FakeStore{UpdateProductFn: func(p *Product) error {
+		{"Does not add malformed json", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "1", `{"name": "Pepsi", "price":,"quantity": 5, "category_id": 1}`, 400},
-		{"Invalid ID", &FakeStore{UpdateProductFn: func(p *Product) error {
+		{"Invalid ID", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "abc", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 400},
-		{"Product not found", &FakeStore{UpdateProductFn: func(p *Product) error {
+		{"Product not found", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return sql.ErrNoRows
 		}}, "2", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 404},
-		{"DB failure", &FakeStore{UpdateProductFn: func(p *Product) error {
+		{"DB failure", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return errors.New("internal server error")
 		}}, "1", `{"name": "Pepsi", "price": 199,"quantity": 5, "category_id": 1}`, 500},
 	}
