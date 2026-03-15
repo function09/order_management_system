@@ -41,23 +41,33 @@ func TestGetAllProducts(t *testing.T) {
 	var tests = []struct {
 		name  string
 		store ProductStore
+		param string
 		want  int
 	}{
-		{"Returns a list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit, offset int) ([]*Product, error) {
+		{"Returns a list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
 			return []*Product{{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, {ID: 1, Name: "Coke", Price: 299, Quantity: 2, CategoryID: 1}}, nil
-		}}, 200},
-		{"Returns an empty list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit, offset int) ([]*Product, error) {
+		}}, "?limit=5&offset=0", 200},
+		{"Returns an empty list of products", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
 			return []*Product{}, nil
-		}}, 200},
-		{"DB call fails", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit, offset int) ([]*Product, error) {
+		}}, "?limit=5&offset=0", 200},
+		{"DB call fails", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
 			return nil, errors.New("error db call failed")
-		}}, 500},
+		}}, "?limit=5&offset=0", 500},
+		{"Invalid limit parameter", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
+			return []*Product{{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, {ID: 1, Name: "Coke", Price: 299, Quantity: 2, CategoryID: 1}}, nil
+		}}, "?limit=abc&offset=0", 200},
+		{"Invalid offset parameter", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
+			return []*Product{{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, {ID: 1, Name: "Coke", Price: 299, Quantity: 2, CategoryID: 1}}, nil
+		}}, "?limit=5&offset=abc", 200},
+		{"Missing parameter", &FakeStore{GetAllProductsFn: func(ctx context.Context, limit int, offset int) ([]*Product, error) {
+			return []*Product{{ID: 1, Name: "Pepsi", Price: 199, Quantity: 2, CategoryID: 1}, {ID: 1, Name: "Coke", Price: 299, Quantity: 2, CategoryID: 1}}, nil
+		}}, "?limit=&offset=abc", 200},
 	}
 
 	for _, e := range tests {
 		t.Run(e.name, func(t *testing.T) {
 
-			req := httptest.NewRequest("GET", "/products", nil)
+			req := httptest.NewRequest("GET", "/products"+e.param, nil)
 			w := httptest.NewRecorder()
 
 			handler := GetAllProductsHandler(e.store)

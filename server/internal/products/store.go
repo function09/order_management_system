@@ -26,8 +26,8 @@ type ProductStore interface {
 	UpdateProduct(ctx context.Context, p *Product) error
 }
 
-func (s *Store) GetAllProducts(ctx context.Context, limit, offset int) ([]*Product, error) {
-	rows, err := s.QueryContext(ctx, "SELECT id, sku, name, price, quantity, category_id FROM products")
+func (s *Store) GetAllProducts(ctx context.Context, limit int, offset int) ([]*Product, error) {
+	rows, err := s.QueryContext(ctx, "SELECT id, sku, name, price, quantity, category_id FROM products ORDER BY id ASC LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		return nil, err
 	}

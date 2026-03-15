@@ -12,12 +12,27 @@ type ProductInput struct {
 	SKU        string `json:"sku"`
 	Price      int    `json:"price"`
 	Quantity   int    `json:"quantity"`
-	CategoryID int    `json:"category_id"`
+	CategoryID int    `json:"category_id" `
 }
 
-func GetAllProductsHandler(store ProductStore, limit, offset int) http.HandlerFunc {
+func GetAllProductsHandler(store ProductStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		products, err := store.GetAllProducts(r.Context())
+		limitString := r.URL.Query().Get("limit")
+		offsetString := r.URL.Query().Get("offset")
+
+		limitInt, err := strconv.Atoi(limitString)
+
+		if err != nil || limitInt <= 0 {
+			limitInt = 20
+		}
+
+		offsetInt, err := strconv.Atoi(offsetString)
+
+		if err != nil || offsetInt <= 0 {
+			offsetInt = 0
+		}
+
+		products, err := store.GetAllProducts(r.Context(), limitInt, offsetInt)
 
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -25,7 +40,6 @@ func GetAllProductsHandler(store ProductStore, limit, offset int) http.HandlerFu
 		}
 
 		json.NewEncoder(w).Encode(products)
-
 	}
 }
 
