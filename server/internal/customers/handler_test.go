@@ -2,8 +2,10 @@ package customers
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -76,4 +78,75 @@ func TestGetAllCustomers(t *testing.T) {
 		})
 
 	}
+}
+
+func TestGetCustomer(t *testing.T) {
+	var tests = []struct {
+		name      string
+		store     CustomerStore
+		pathValue string
+		want      int
+	}{
+		{"Returns a customer", &FakeStore{GetCustomerFn: func(ctx context.Context, id int) (*Customer, error) {
+			return &Customer{ID: 1, FirstName: "John", LastName: "Doe", Email: "johndoe@mail.com", IsActive: true}, nil
+		}}, "1", 200},
+		{"Returns no customer", &FakeStore{GetCustomerFn: func(ctx context.Context, id int) (*Customer, error) {
+			return nil, sql.ErrNoRows
+		}}, "2", 404},
+		{"No path or bad path", &FakeStore{GetCustomerFn: func(ctx context.Context, id int) (*Customer, error) {
+			return nil, errors.New("Bad path")
+		}}, "", 400},
+		{"Internal server error", &FakeStore{GetCustomerFn: func(ctx context.Context, id int) (*Customer, error) {
+			return nil, errors.New("Internal server error")
+		}}, "1", 500},
+	}
+	for _, e := range tests {
+		t.Run(e.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/customers/"+e.pathValue, nil)
+			w := httptest.NewRecorder()
+
+			req.SetPathValue("id", e.pathValue)
+			handler := GetCustomerHandler(e.store)
+			handler(w, req)
+
+			if w.Code != e.want {
+				t.Errorf("Got %d want %d", w.Code, e.want)
+			}
+		})
+	}
+}
+
+func TestCreateCustomer(t *testing.T) {
+	var tests = []struct {
+		name  string
+		store CustomerStore
+		body  string
+		want  int
+	}{
+		{"Creates a customer", &FakeStore{CreateCustomerFn: func(ctx context.Context, cst *Customer) (int, error) {
+			return 1, nil
+		}}, `{"firstName":"John", "lastName":"Doe", "email":"johndoe@mail.com"}`, 201},
+		{"Malformed JSON", &FakeStore{CreateCustomerFn: func(ctx context.Context, cst *Customer) (int, error) {
+			return 0, nil
+		}}, `{"firstName":, "lastName":"Doe", "email":"johndoe@mail.com"}`, 400},
+		{"DB Error", &FakeStore{CreateCustomerFn: func(ctx context.Context, cst *Customer) (int, error) {
+			return 0, errors.New("Internal server error")
+		}}, `{"firstName":"John", "lastName":"Doe", "email":"johndoe@mail.com"}`, 500},
+	}
+
+	for _, e := range tests {
+		t.Run(e.name, func(t *testing.T) {
+			body := strings.NewReader(e.body)
+			req := httptest.NewRequest("POST", "/customer", body)
+			w := httptest.NewRecorder()
+
+			handler := CreateCustomerHandler(e.store)
+			handler(w, req)
+
+			if w.Code != e.want {
+				t.Errorf("Got %d want %d", w.Code, e.want)
+			}
+		})
+	}
+
 }
