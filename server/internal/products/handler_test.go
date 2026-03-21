@@ -191,10 +191,10 @@ func TestUpdateProduct(t *testing.T) {
 		body      string
 		want      int
 	}{
-		{"Successfuly adds a product", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
+		{"Successfuly updates a product", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "1", `{"name": "Pepsi", "price":199,"quantity": 5, "category_id": 1}`, 200},
-		{"Does not add malformed json", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
+		{"Does not update malformed json", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
 			return nil
 		}}, "1", `{"name": "Pepsi", "price":,"quantity": 5, "category_id": 1}`, 400},
 		{"Invalid ID", &FakeStore{UpdateProductFn: func(ctx context.Context, p *Product) error {
