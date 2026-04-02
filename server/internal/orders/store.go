@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
-	"golang.org/x/text/unicode/rangetable"
 )
 
 type Order struct {
